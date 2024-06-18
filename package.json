@@ -61,6 +61,7 @@
     "@fontsource/material-icons": "^5.0.11",
     "@fontsource/roboto": "^5.0.8",
     "@mui/material": "^5.15.6",
+    "peerjs": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "webpack-pwa-manifest": "^4.3.0"
