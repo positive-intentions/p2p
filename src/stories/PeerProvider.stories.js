@@ -31,6 +31,7 @@ const state = {
 const appiSchema = {
     ping: (state, actions) => [
         (request, response, next) => {
+            console.log("ping received");
             response.send({ message: "pong" });
         },
     ],
@@ -62,7 +63,7 @@ const actions = {
 };
 
 const contacts = [
-    "some_peer_id",
+    "",
     // {
     //     peerId: "456789",
     //     keys: [
@@ -96,9 +97,10 @@ const contacts = [
 // More on writing stories with args: https://storybook.js.org/docs/writing-stories/args
 export const Basic = {
     args: {
+        contactId: "",
         children: "positive-intentions",
         peerId: randomHex,
-        // config: {},
+        config: {},
         contacts,
         appiSchema,
         state: { ... state },

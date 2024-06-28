@@ -3,6 +3,79 @@ const { ModuleFederationPlugin } = require('webpack').container;
 const WebpackPwaManifest = require('webpack-pwa-manifest');
 const path = require('path');
 
+const moduleRedundency = ({
+    moduleName,
+    urls
+  }) => (`promise new Promise(async (resolve) => {
+
+    function getRandomNumber(min, max) {
+      if (min > max) {
+          throw new Error("Minimum value must be less than or equal to the maximum value.");
+      }
+      // Generate and return a random integer between min and max, inclusive
+      return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+  
+    const urls = ${JSON.stringify(urls)}
+  
+  
+    function checkUrl(url) {
+      const timestamp = Date.now();
+      return fetch(url, {
+        method: "HEAD",
+        mode: 'no-cors'
+      })
+        .then(res => {
+            return {
+              url,
+              ping: Date.now() - timestamp
+            }
+        })
+        .catch(error => null);
+    }
+  
+    const availabilityPromises = urls
+      .map(url =>
+        checkUrl(url)
+      )
+      .filter(url => !!url);
+  
+    // Use Promise.race to find the first URL that responds with an available resource
+    const urlPings = await Promise.all(availabilityPromises)
+      .catch(error => {
+        // Handle the case where none of the URLs are available
+        reject(new Error('None of the URLs responded positively: ' + error.message));
+      });
+    
+    const firstAvailableUrl = urlPings
+      .filter(url => !!url)
+      .reduce((lowest, item) => {
+          return item.ping < lowest.ping ? item : lowest;
+      });
+  
+    const remoteUrlWithVersion = firstAvailableUrl.url;
+    const script = document.createElement('script')
+    script.src = remoteUrlWithVersion
+    script.onload = () => {
+      // the injected script has loaded and is available on window
+      // we can now resolve this Promise
+      const proxy = {
+        get: (request) => window.${moduleName}.get(request),
+        init: (arg) => {
+          try {
+            return window.${moduleName}.init(arg)
+          } catch(e) {
+            console.log('remote container already initialized')
+          }
+        }
+      }
+      resolve(proxy)
+    }
+    // inject this script with the src set to the versioned remoteEntry.js
+    document.head.appendChild(script);
+  })
+  `);
+
 module.exports = {
     mode: 'development',
     entry: './src/index.ts',
@@ -70,6 +143,16 @@ module.exports = {
             exposes: {
                 './PeerProvider': './src/stories/components/PeerProvider.tsx',
             },
+            remotes: {
+                "dim": moduleRedundency({
+                  moduleName: 'dim',
+                  urls: [
+                    // 'http://localhost:3000/remoteEntry.js', // local for testing
+                    'https://positive-intentions.github.io/dim/remoteEntry.js',
+                    'https://dim.positive-intentions.com/remoteEntry.js'
+                  ]
+                }),
+              },
             shared: { react: { singleton: true }, "react-dom": { singleton: true } }
         }),
     ],

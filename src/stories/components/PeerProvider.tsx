@@ -1,12 +1,55 @@
 import React, { useState, useEffect, createContext, useCallback } from "react";
 import Peer from "peerjs";
 
+import {
+    useState as useState2,
+    useEffect as useEffect2,
+    useMemo,
+    define,
+    html
+} from "dim/Dim";
+
+const Button = function({ children, initialstate = 0 }) {
+    const [count, setCount] = useState2(parseInt(initialstate));
+
+    useEffect2(() => {
+        console.log("Button mounted");
+        return () => {
+            console.log("Button unmounted");
+        };
+    }, []);
+
+    useEffect2(() => {
+        console.log("count effect triggered");
+    }, [count()]);
+
+    const someCalculation = useMemo(() => {
+        const result = count() * 2;
+        console.log("memo calculation triggered:", result);
+        return result;
+    }, [count()]);
+
+    return html`
+        <button @click="${() => setCount(count() + 1)}">
+            ${children}
+            ${count()}
+            ${someCalculation}
+        </button>
+    `;
+}
+
+define({
+    tag: 'my-button',
+    component: Button,
+});
+
 export const PeerContext = createContext();
 
 export default function PeerProvider({
     peerId,
     config,
     contacts,
+    contactId,
     appiSchema,
     state: initialState,
     actions,
@@ -17,6 +60,11 @@ export default function PeerProvider({
     const [connections, setConnections] = useState({});
     const [streams, setStreams] = useState({});
     const [state, setState] = useState(initialState);
+    // const [allContacts, setAllContacts] = useState([...contacts, contactId ? contactId : null].filter(c => !!c));
+
+    const allContacts = useMemo(() => {
+        return [...contacts, contactId ? contactId : null].filter(c => !!c);
+    }, [JSON.stringify(contacts), contactId]);
 
     // Initialize or destroy the peer instance
     useEffect(() => {
@@ -112,17 +160,25 @@ export default function PeerProvider({
 
     // Establish connections to all contacts
     const connectToContacts = useCallback((peer) => {
-        contacts.forEach((contact) => {
+        allContacts
+        .filter(contact => !!contact)
+        .forEach((contact) => {
             if (!connections[contact]) {
                 console.log('connecting to', contact, '...');
                 const conn = peer.connect(contact);
                 setupConnectionHandler(conn);
             }
         });
-    }, [contacts, connections, setupConnectionHandler]);
+    }, [allContacts, connections, setupConnectionHandler]);
+
+    useEffect(() => {
+        if (allContacts.length > 0 && peer){
+            connectToContacts(peer)
+        }
+    }, [JSON.stringify(allContacts), peer]);
 
     // Provider to expose the peer and methods to interact with it
-    return (
+    return !!Object.keys(connections).length && (
         <PeerContext.Provider value={{ peer, emit: handleData, call: setupConnectionHandler, streams, connections }}>
             {children}
             <br />
@@ -145,9 +201,15 @@ export default function PeerProvider({
                             value="increase remote counter"
                             onClick={() => connections[key].send({ type: "addNumber", number: 1 })}
                         />
+                        <input
+                            type="button"
+                            value="decrease remote counter"
+                            onClick={() => connections[key].send({ type: "addNumber", number: -1 })}
+                        />
                     </li>
                 ))}
             </ol>
+            <my-button id="aaa" initialstate="3">Click me</my-button>
         </PeerContext.Provider>
     );
 }
