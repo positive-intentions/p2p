@@ -147,7 +147,7 @@ module.exports = {
                 "dim": moduleRedundency({
                   moduleName: 'dim',
                   urls: [
-                    // 'http://localhost:3000/remoteEntry.js', // local for testing
+                    'http://localhost:8081/remoteEntry.js', // local for testing
                     'https://positive-intentions.github.io/dim/remoteEntry.js',
                     'https://dim.positive-intentions.com/remoteEntry.js'
                   ]

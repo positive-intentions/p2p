@@ -218,7 +218,6 @@ export default function PeerProvider({
                             value="add todo with state sync"
                             onClick={() => {
                                 const newTodo = { text: "new todo", id: Date.now() };
-                                actions.addTodo(newTodo);
                                 connections[key].send({ type: "addTodo", ...newTodo })
                             }}
                         />
