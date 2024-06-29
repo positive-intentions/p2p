@@ -9,7 +9,7 @@ import {
     html
 } from "dim/Dim";
 
-const Button = function({ children, initialstate = 0 }) {
+const Button = function ({ children, initialstate = 0 }) {
     const [count, setCount] = useState2(parseInt(initialstate));
 
     useEffect2(() => {
@@ -52,6 +52,7 @@ export default function PeerProvider({
     contactId,
     appiSchema,
     state: initialState,
+    contentHash,
     actions,
     onConnection,
     children,
@@ -121,7 +122,7 @@ export default function PeerProvider({
         } catch (err) {
             console.log("error removing data listener", err);
         }
-        
+
         conn.on("data", (data) => handleData(conn, data));
         conn.on("open", () => {
             if (onConnection) onConnection(conn);
@@ -138,7 +139,7 @@ export default function PeerProvider({
             ...prev,
             [conn.peer]: conn,
         }));
-    }, [onConnection, state]);
+    }, [onConnection, state, contentHash]);
 
     // Handle incoming data according to appiSchema
     const handleData = useCallback((conn, data) => {
@@ -152,7 +153,7 @@ export default function PeerProvider({
                 handler(
                     { ...data },
                     { send: (response) => conn.send(response) },
-                    () => {}
+                    () => { }
                 );
             });
         }
@@ -161,30 +162,33 @@ export default function PeerProvider({
     // Establish connections to all contacts
     const connectToContacts = useCallback((peer) => {
         allContacts
-        .filter(contact => !!contact)
-        .forEach((contact) => {
-            if (!connections[contact]) {
-                console.log('connecting to', contact, '...');
-                const conn = peer.connect(contact);
-                setupConnectionHandler(conn);
-            }
-        });
+            .filter(contact => !!contact)
+            .forEach((contact) => {
+                if (!connections[contact]) {
+                    console.log('connecting to', contact, '...');
+                    const conn = peer.connect(contact);
+                    setupConnectionHandler(conn);
+                }
+            });
     }, [allContacts, connections, setupConnectionHandler]);
 
     useEffect(() => {
-        if (allContacts.length > 0 && peer){
+        if (allContacts.length > 0 && peer) {
             connectToContacts(peer)
         }
     }, [JSON.stringify(allContacts), peer]);
 
     // Provider to expose the peer and methods to interact with it
-    return !!Object.keys(connections).length && (
+    return (
         <PeerContext.Provider value={{ peer, emit: handleData, call: setupConnectionHandler, streams, connections }}>
-            {children}
+            my peer id: {peerId}
+            <br />
+            <br />
+            peerjs: {peer ? "connected" : "disconnected"}
+            <br />
             <br />
             counter: {JSON.stringify(state.number)}
             <br />
-            peerjs: {peer ? "connected" : "disconnected"}
             <br />
             connections:
             <ol>
@@ -196,20 +200,36 @@ export default function PeerProvider({
                             value="ping"
                             onClick={() => connections[key].send({ type: "ping" })}
                         />
+                        <br />
                         <input
                             type="button"
                             value="increase remote counter"
                             onClick={() => connections[key].send({ type: "addNumber", number: 1 })}
                         />
+                        <br />
                         <input
                             type="button"
                             value="decrease remote counter"
                             onClick={() => connections[key].send({ type: "addNumber", number: -1 })}
                         />
+                        <br />
+                        <input
+                            type="button"
+                            value="add todo with state sync"
+                            onClick={() => {
+                                const newTodo = { text: "new todo", id: Date.now() };
+                                actions.addTodo(newTodo);
+                                connections[key].send({ type: "addTodo", ...newTodo })
+                            }}
+                        />
                     </li>
                 ))}
             </ol>
-            <my-button id="aaa" initialstate="3">Click me</my-button>
+            {/* <my-button id="aaa" initialstate="3">Click me</my-button> */}
+
+            <br />
+            <br />
+            {children}
         </PeerContext.Provider>
     );
 }

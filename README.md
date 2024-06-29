@@ -42,6 +42,7 @@ const state = {
 
 const appiSchema = {
     addNumber: (state, actions) => [
+        authenticationMiddleware(state, actions),
         (request, response, next) => {
             const { number } = request;
             const newNumber = actions.addNumber(number);
@@ -49,6 +50,7 @@ const appiSchema = {
         }
     ],
     getNumber: (state, actions) => [
+        authenticationMiddleware(state, actions),
         (request, response, next) => {
             response({ number: state.number });
         }
